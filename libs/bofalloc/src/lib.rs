@@ -2,10 +2,13 @@
 #![feature(core_intrinsics)]
 
 use bofhelper::import_function;
-use windows_sys::Win32::{Foundation::{HANDLE, BOOL}, System::Memory::{HEAP_ZERO_MEMORY, HEAP_GROWABLE}};
 use core::alloc::{GlobalAlloc, Layout};
-use core::sync::atomic::{AtomicIsize, Ordering};
 use core::ptr::null_mut;
+use core::sync::atomic::{AtomicIsize, Ordering};
+use windows_sys::Win32::{
+    Foundation::{BOOL, HANDLE},
+    System::Memory::{HEAP_GROWABLE, HEAP_ZERO_MEMORY},
+};
 
 import_function!(NTDLL!RtlCreateHeap(Flags: u32, HeapBase: *mut u8, ReserveSize: usize, CommitSize: usize, Lock: *mut u8, Parameters: *mut u8) -> HANDLE);
 import_function!(NTDLL!RtlAllocateHeap(hHeap: HANDLE, dwFlags: u32, dwByes: usize) -> *mut u8);
@@ -22,7 +25,7 @@ unsafe impl Send for BofAlloc {}
 unsafe impl Sync for BofAlloc {}
 
 #[no_mangle]
-extern "Rust" fn __rust_alloc(size: usize, align: usize) -> *mut u8 {
+fn __rust_alloc(size: usize, align: usize) -> *mut u8 {
     unsafe {
         let lay = Layout::from_size_align_unchecked(size, align);
         ALLOCATOR.alloc(lay)
@@ -30,7 +33,7 @@ extern "Rust" fn __rust_alloc(size: usize, align: usize) -> *mut u8 {
 }
 
 #[no_mangle]
-extern "Rust" fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize) {
+fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize) {
     unsafe {
         let lay = Layout::from_size_align_unchecked(size, align);
         ALLOCATOR.dealloc(ptr, lay)
@@ -38,7 +41,7 @@ extern "Rust" fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize) {
 }
 
 #[no_mangle]
-extern "Rust" fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8 {
+fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8 {
     unsafe {
         let lay = Layout::from_size_align_unchecked(old_size, align);
         ALLOCATOR.realloc(ptr, lay, new_size)
@@ -46,7 +49,7 @@ extern "Rust" fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new
 }
 
 #[no_mangle]
-extern "Rust" fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
+fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
     unsafe {
         let lay = Layout::from_size_align_unchecked(size, align);
         ALLOCATOR.alloc_zeroed(lay)
@@ -54,12 +57,12 @@ extern "Rust" fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
 }
 
 #[no_mangle]
-extern "Rust" fn __rust_alloc_error_handler() -> ! {
+fn __rust_alloc_error_handler() -> ! {
     core::intrinsics::abort()
 }
 
 #[no_mangle]
-extern "Rust" fn rust_oom() -> ! {
+fn rust_oom() -> ! {
     core::intrinsics::abort()
 }
 

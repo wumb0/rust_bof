@@ -1,7 +1,10 @@
 #![no_std]
 use core::ops::Deref;
 pub use paste::paste;
-use windows_sys::Win32::{Foundation::{HANDLE, BOOL}, System::Threading::{PROCESS_INFORMATION, STARTUPINFOA}};
+use windows_sys::Win32::{
+    Foundation::{BOOL, HANDLE},
+    System::Threading::{PROCESS_INFORMATION, STARTUPINFOA},
+};
 
 pub struct BOFFunctionWrapper<T>(T);
 impl<T> Deref for BOFFunctionWrapper<T> {
@@ -133,7 +136,8 @@ pub unsafe fn bootstrap_data(relocs: &[DataRelocation], section: usize) -> Optio
                 *ptr += (secbase + reloc.offset_to_sym as usize) as u64;
             }
             IMAGE_REL_I386_DIR32 => {
-                let ptr: *mut u32 = (section as *mut u8).add(reloc.offset_in_sec as usize) as *mut u32;
+                let ptr: *mut u32 =
+                    (section as *mut u8).add(reloc.offset_in_sec as usize) as *mut u32;
                 *ptr += (secbase + reloc.offset_to_sym as usize) as u32;
             }
             // rust doesn't seem to use the rest of these, so we will just comment them out for now
@@ -209,7 +213,6 @@ pub struct BOFFormat {
     size: i32,
 }
 
-
 pub const CALLBACK_OUTPUT: i32 = 0;
 pub const CALLBACK_OUTPUT_OEM: i32 = 0x1e;
 pub const CALLBACK_OUTPUT_UTF8: i32 = 0x20;
@@ -247,8 +250,23 @@ import_function_internal_pub!(BeaconUseToken(token: HANDLE) -> BOOL);
 import_function_internal_pub!(BeaconRevertToken());
 import_function_internal_pub!(BeaconIsAdmin());
 import_function_internal_pub!(BeaconGetSpawnTo(x86: BOOL, buffer: *mut u8, length: i32));
-import_function_internal_pub!(BeaconInjectProcess(hProc: HANDLE, pid: i32, payload: *mut u8, p_len: i32, p_offset: i32, arg: *mut u8, a_len: i32));
-import_function_internal_pub!(BeaconInjectTemporaryProcess(pInfo: *mut PROCESS_INFORMATION, payload: *mut u8, p_len: i32, p_offset: i32, arg: *mut u8, a_len: i32));
+import_function_internal_pub!(BeaconInjectProcess(
+    hProc: HANDLE,
+    pid: i32,
+    payload: *mut u8,
+    p_len: i32,
+    p_offset: i32,
+    arg: *mut u8,
+    a_len: i32
+));
+import_function_internal_pub!(BeaconInjectTemporaryProcess(
+    pInfo: *mut PROCESS_INFORMATION,
+    payload: *mut u8,
+    p_len: i32,
+    p_offset: i32,
+    arg: *mut u8,
+    a_len: i32
+));
 import_function_internal_pub!(BeaconSpawnTemporaryProcess(x86: BOOL, ignoreToken: BOOL, si: *mut STARTUPINFOA, pInfo: *mut PROCESS_INFORMATION) -> BOOL);
 import_function_internal_pub!(BeaconCleanupProcess(pInfo: *mut PROCESS_INFORMATION));
 import_function_internal_pub!(toWideChar(src: *mut u8, dst: *mut u16, max: i32) -> BOOL);

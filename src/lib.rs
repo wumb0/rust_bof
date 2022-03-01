@@ -1,8 +1,8 @@
 #![no_std]
 
 extern crate alloc;
-use bofhelper::{import_function, BofData, CALLBACK_OUTPUT, beacon_print};
 use alloc::format;
+use bofhelper::{beacon_print, import_function, BofData, CALLBACK_OUTPUT};
 
 use bofentry::bof_entry;
 

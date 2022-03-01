@@ -23,7 +23,7 @@ I feel like I want to write a blog post about it at some point, but for now, her
   - rustc has an `--emit=obj` flag that will just emit the object files into the deps folder of the target  
 - A BOF is a **single** object file, not many. Rust compiles each component into its own .o file. How do I combine them?  
   - ld has a feature called "relocatable" (-i) which is used for incremental linking  
-- Th Cobalt Strike loader throws throwing a NullPointerException on `beacon_inline_execute`. Why?  
+- The Cobalt Strike loader throws throwing a NullPointerException on `beacon_inline_execute`. Why?  
   - Some decompilation and bytecode debugging led me to find that the CS COFF parser was choking on some symbols in the object. Turns out those symbols were just included as debug (file) info.  
   - In my investigation I found that the `OBJExecutable` and `OBJParser` classes in cobaltstrike.jar have main functions that take the path to an object file and print a bunch of useful information!  
 - How do I remove uneeded symbols in an object file?  
