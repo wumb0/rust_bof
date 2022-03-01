@@ -85,4 +85,6 @@ TODO
 
 Thanks
 ======
-TrustedSec's COFF parser really helped with this - https://github.com/trustedsec/COFFLoader
+- TrustedSec's COFF parser really helped with this - https://github.com/trustedsec/COFFLoader  
+- Delorie COFF structure pages - https://delorie.com/djgpp/doc/coff  
+- Sleep & CS beacon docs  
