@@ -1,0 +1,14 @@
+[package]
+name = "bofalloc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bofhelper = { path = "../bofhelper" }
+
+[dependencies.windows-sys]
+version = "0.33"
+features = [
+    "Win32_Foundation",
+    "Win32_System_Memory"
+]

@@ -1,0 +1,8 @@
+[build]
+rustflags = [
+    "--emit=obj",
+]
+
+[unstable]
+build-std = ["core", "panic_abort", "alloc"]
+build-std-features = ["panic_immediate_abort", "compiler-builtins-mem"]

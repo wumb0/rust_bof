@@ -1,0 +1,78 @@
+import pe.OBJExecutable;
+import common.Packer;
+
+alias rustbof {
+    local('$arch $handle $data $args $relocs $ndata $nrdata');
+    $arch = binfo($1, "arch");
+    $handle = openf(script_resource("rustbof." . $arch. ".o"));
+    $data = readb($handle, -1);
+    $relocs = build_data_relocs($1, $data, "entrypoint");
+    if ($relocs is $null) {
+        berror($1, "Relocation packing failed");
+        return;
+    }
+    ($relocs, $ndata, $nrdata) = $relocs;
+    # the first two args MUST be the relocation bytes and the number of data entries
+    $args = bof_pack($1, "bizi", $relocs, $ndata, "a string argument", 123);
+    blog($1, "Tasking with rust bof");
+    beacon_inline_execute($1, $data, "entrypoint", $args);
+}
+
+# $1 - beacon
+# $2 - coffbytes
+# $3 - entry
+sub build_data_relocs {
+    local('$beacon $coff $parser $table $entry $packer $ndata $nrdata');
+    ($beacon, $coff, $entry) = @_;
+    $parser = [new OBJExecutable: $coff, $entry];
+    [$parser parse];
+    if ([$parser hasErrors]) {
+        berror($beacon, "Object file has errors: " . [$parser getErrors]);
+        return $null;
+    }
+
+    $packer = [new Packer];
+    [$packer little];
+    $ndata = build_relocs_for_section($beacon, ".data", $parser, $packer);
+    if ($ndata is $null) {
+        berror($beacon, "Failed to create relocs for .data");
+        return $null;
+    }
+    $nrdata = build_relocs_for_section($beacon, ".rdata", $parser, $packer);
+    if ($nrdata is $null) {
+        berror($beacon, "Failed to create relocs for .rdata");
+        return $null;
+    }
+
+    return @([$packer getBytes], $ndata, $nrdata);
+}
+
+# $1 - beacon
+# $2 - secname
+# $3 - parser
+# $4 - packer
+sub build_relocs_for_section {
+    local('$beacon $secname $parser $packer $reloc_count $reloc $objinfo $idx $sec_idx $relsec $sec_id');
+    ($beacon, $secname, $parser, $packer) = @_;
+    $objinfo = [$parser getInfo];
+    $reloc_count = [$objinfo relocationsCount: $secname];
+    for ($idx = 0; $idx < $reloc_count; $idx++) {
+        $reloc = [$objinfo getRelocation: $secname, $idx];
+        $relsec = [$reloc getSection];
+        if (".text" eq $relsec) {
+            $sec_id = 1;
+        } else if (".data" eq $relsec) {
+            $sec_id = 2;
+        } else if (".rdata" eq $relsec) {
+            $sec_id = 3;
+        } else {
+            berror($beacon, "Unknown section: " . $relsec);
+            return $null;
+        }
+        [$packer addInt: [$reloc getOffsetInSection]];
+        [$packer addInt: [$reloc getOffset]];
+        [$packer addByte: $sec_id];
+        [$packer addByte: [$reloc getType]];
+    }
+    return $reloc_count;
+}

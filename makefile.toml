@@ -1,0 +1,55 @@
+# cargo install cargo-make && cargo make
+[config]
+skip_core_tasks = true
+
+[env]
+MINGW_X86_PREFIX = "i686-w64-mingw32-"
+MINGW_X64_PREFIX = "x86_64-w64-mingw32-"
+BOF_NAME = "rustbof"
+
+[tasks.combine-objs]
+script = "${MINGW_PREFIX}ld -T linker_script.ld --gc-sections -u ${ENTRY_PREFIX}entrypoint -i target/${RUST_TARGET}/release/deps/*.o -o ${BOF_NAME}.${BOF_ARCH}.o"
+dependencies = ["generate-linker-script", "build"]
+
+[tasks.strip-uneeded]
+command = "${MINGW_PREFIX}strip"
+args = ["--strip-unneeded", "${BOF_NAME}.${BOF_ARCH}.o"]
+dependencies = ["combine-objs"]
+
+[tasks.generate-linker-script]
+script = "${MINGW_PREFIX}ld -i --verbose | sed -n '/^======/, /^======/p' | grep -v '=======' | sed 's/\\(*(.rdata)\\)/__rdata_start__ = .;\\n\\1/' | sed 's/\\(*(.text)\\)/__text_start__ = .;\\n\\1/' | sed 's/\\(*(.data)\\)/__data_start__ = .;\\n\\1/' > linker_script.ld"
+
+[tasks.build]
+command = "cargo"
+args = ["build", "--target", "${RUST_TARGET}", "--release"]
+
+[tasks.clean-target]
+command = "cargo"
+args = ["clean"]
+
+[tasks.clean-bof]
+script = "rm -rf ${BOF_NAME}.*.o"
+
+[tasks.clean-misc]
+command = "rm"
+args = ["-rf", "linker_script.ld"]
+
+[tasks.clean]
+dependencies = ["clean-target", "clean-bof", "clean-misc"]
+
+[tasks.all]
+dependencies = ["strip-uneeded"]
+
+[tasks.cleanall]
+dependencies = ["clean", "default"]
+
+[tasks.default]
+dependencies = ["build-x86", "build-x64"]
+
+[tasks.build-x86]
+env = {"MINGW_PREFIX" = "${MINGW_X86_PREFIX}", "RUST_TARGET" = "i686-pc-windows-gnu", "BOF_ARCH" = "x86", "ENTRY_PREFIX" = "_"}
+run_task = "all"
+
+[tasks.build-x64]
+env = {"MINGW_PREFIX" = "${MINGW_X64_PREFIX}", "RUST_TARGET" = "x86_64-pc-windows-gnu", "BOF_ARCH" = "x64", "ENTRY_PREFIX" = ""}
+run_task = "all"
