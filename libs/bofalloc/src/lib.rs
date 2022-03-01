@@ -27,6 +27,7 @@ unsafe impl Sync for BofAlloc {}
 #[no_mangle]
 fn __rust_alloc(size: usize, align: usize) -> *mut u8 {
     unsafe {
+        ALLOCATOR.init_if_required();
         let lay = Layout::from_size_align_unchecked(size, align);
         ALLOCATOR.alloc(lay)
     }
@@ -35,6 +36,7 @@ fn __rust_alloc(size: usize, align: usize) -> *mut u8 {
 #[no_mangle]
 fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize) {
     unsafe {
+        ALLOCATOR.init_if_required();
         let lay = Layout::from_size_align_unchecked(size, align);
         ALLOCATOR.dealloc(ptr, lay)
     };
@@ -43,6 +45,7 @@ fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize) {
 #[no_mangle]
 fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8 {
     unsafe {
+        ALLOCATOR.init_if_required();
         let lay = Layout::from_size_align_unchecked(old_size, align);
         ALLOCATOR.realloc(ptr, lay, new_size)
     }
@@ -51,6 +54,7 @@ fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) 
 #[no_mangle]
 fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
     unsafe {
+        ALLOCATOR.init_if_required();
         let lay = Layout::from_size_align_unchecked(size, align);
         ALLOCATOR.alloc_zeroed(lay)
     }
@@ -88,14 +92,17 @@ impl BofAlloc {
     }
 
     unsafe fn init_if_required(&mut self) {
-        if !ALLOCATOR.is_initialized() {
-            ALLOCATOR.initialize();
+        if !self.is_initialized() {
+            self.initialize();
         }
     }
 
+    /// Destroy the allocator via `RtlHeapDestroy`
+    /// # Safety  
+    /// This will render all underlying allocations invalid  
     #[inline]
     pub unsafe fn destroy(&mut self) {
-        if ALLOCATOR.is_initialized() {
+        if self.is_initialized() {
             // will return 0 on success
             RtlDestroyHeap(self.0.swap(0, Ordering::SeqCst));
         }
@@ -104,22 +111,18 @@ impl BofAlloc {
 
 unsafe impl GlobalAlloc for BofAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        ALLOCATOR.init_if_required();
         RtlAllocateHeap(self.raw_handle(), 0, layout.size())
     }
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        ALLOCATOR.init_if_required();
         RtlAllocateHeap(self.raw_handle(), HEAP_ZERO_MEMORY, layout.size())
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        ALLOCATOR.init_if_required();
         RtlFreeHeap(self.raw_handle(), 0, ptr);
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
-        ALLOCATOR.init_if_required();
         RtlReAllocateHeap(self.raw_handle(), 0, ptr, new_size)
     }
 }

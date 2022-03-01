@@ -14,7 +14,7 @@ Building
 
 Make your own
 =============
-Edit the entry function in src/lib.rs. You can add new args by using the `bof_pack` function in the aggressor script, just don't change the first two because those are the relocations.  
+Edit the entry function in rustbof/src/lib.rs. You can add new args by using the `bof_pack` function in the aggressor script, just don't change the first two because those are the relocations.  
 
 How the fk
 ==========
@@ -87,4 +87,6 @@ Thanks
 ======
 - TrustedSec's COFF parser really helped with this - https://github.com/trustedsec/COFFLoader  
 - Delorie COFF structure pages - https://delorie.com/djgpp/doc/coff  
+- This post on Rust intermediates - https://medium.com/@squanderingtime/manually-linking-rust-binaries-to-support-out-of-tree-llvm-passes-8776b1d037a4  
+- This post on debugging java bytecode - https://www.crowdstrike.com/blog/native-java-bytecode-debugging-without-source-code/  
 - Sleep & CS beacon docs  

@@ -1,8 +1,10 @@
-[package]
-name = "boftest"
-version = "0.1.0"
-authors = ["Jaime Geiger <wumb0@finishyour.beer>"]
-edition = "2021"
+[workspace]
+members = [
+    "rustbof",
+    "libs/bofalloc",
+    "libs/bofentry",
+    "libs/bofhelper"
+]
 
 [profile.dev]
 panic = "abort"
@@ -15,12 +17,3 @@ panic = "abort"
 opt-level = "z"
 codegen-units = 1
 strip = true
-
-[dependencies]
-bofhelper = { path = "libs/bofhelper" }
-bofentry = { path = "libs/bofentry" }
-bofalloc = { path = "libs/bofalloc", optional = true }
-
-[features]
-default = ["alloc"]
-alloc = ["bofalloc", "bofentry/alloc"]

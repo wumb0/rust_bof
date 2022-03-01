@@ -1,6 +1,7 @@
 # cargo install cargo-make && cargo make
 [config]
 skip_core_tasks = true
+default_to_workspace = false
 
 [env]
 MINGW_X86_PREFIX = "i686-w64-mingw32-"
@@ -21,7 +22,7 @@ script = "${MINGW_PREFIX}ld -i --verbose | sed -n '/^======/, /^======/p' | grep
 
 [tasks.build]
 command = "cargo"
-args = ["build", "--target", "${RUST_TARGET}", "--release"]
+args = ["build", "-p", "${BOF_NAME}", "--target", "${RUST_TARGET}", "--release"]
 
 [tasks.clean-target]
 command = "cargo"

@@ -113,6 +113,9 @@ extern "C" {
     fn __rdata_start__();
 }
 
+/// Perform relocations on the .data and .rdata sections  
+/// # Safety  
+/// I think you can guess why this is not safe at all  
 pub unsafe fn bootstrap(relocs: &[u8], ndata: usize) -> Option<()> {
     let relocs = core::slice::from_raw_parts(
         relocs.as_ptr() as *const DataRelocation,
@@ -122,6 +125,9 @@ pub unsafe fn bootstrap(relocs: &[u8], ndata: usize) -> Option<()> {
         .and(bootstrap_data(&relocs[ndata..], __rdata_start__ as usize))
 }
 
+/// Perform relocations on a single section
+/// # Safety  
+/// I think you can guess why this is not safe at all  
 pub unsafe fn bootstrap_data(relocs: &[DataRelocation], section: usize) -> Option<()> {
     for reloc in relocs {
         let secbase = match reloc.sec {
@@ -190,6 +196,10 @@ impl BofData {
 
     pub fn len(&self) -> i32 {
         unsafe { BeaconDataLength(&self.0) }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn get_data<'a>(&mut self) -> &'a [u8] {

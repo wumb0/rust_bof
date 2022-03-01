@@ -1,0 +1,14 @@
+[package]
+name = "rustbof"
+version = "0.1.0"
+authors = ["Jaime Geiger <wumb0@finishyour.beer>"]
+edition = "2021"
+
+[dependencies]
+bofhelper = { path = "../libs/bofhelper" }
+bofentry = { path = "../libs/bofentry" }
+bofalloc = { path = "../libs/bofalloc", optional = true }
+
+[features]
+default = ["alloc"]
+alloc = ["bofalloc", "bofentry/alloc"]
