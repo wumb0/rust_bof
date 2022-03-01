@@ -61,12 +61,12 @@ fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
 }
 
 #[no_mangle]
-fn __rust_alloc_error_handler() -> ! {
+unsafe fn __rust_alloc_error_handler() -> ! {
     core::intrinsics::abort()
 }
 
 #[no_mangle]
-fn rust_oom() -> ! {
+unsafe fn rust_oom() -> ! {
     core::intrinsics::abort()
 }
 

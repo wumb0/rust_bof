@@ -14,7 +14,7 @@ fn entry(mut data: BofData) {
     unsafe { OutputDebugStringA("Hello world!\n\0".as_ptr()) };
     let s = data.get_str();
     let _int = data.get_int();
-    let asdf = format!("my string = {}", s);
+    let asdf = format!("my string = {}\0", s);
     beacon_print!("Hello world! {}", asdf);
     unsafe { OutputDebugStringA(asdf.as_ptr()) };
 }

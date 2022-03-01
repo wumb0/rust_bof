@@ -27,10 +27,10 @@ impl<T> BOFFunctionWrapper<T> {
 // suitable for calling
 #[macro_export]
 macro_rules! import_function {
-    ($lib:ident!$func:ident$args:tt $(-> $ret:ty)?) => {
-        import_function!("stdcall" $lib!$func$args $(-> $ret)?);
+    ($pub:vis $lib:ident!$func:ident$args:tt $(-> $ret:ty)?) => {
+        import_function!($pub $lib!$func$args $(-> $ret)?, "stdcall");
     };
-    ($cc:literal $lib:ident!$func:ident$args:tt $(-> $ret:ty)?) => {
+    ($pub:vis $lib:ident!$func:ident$args:tt $(-> $ret:ty)?, $cc:literal) => {
         $crate::paste! {
             extern $cc {
                 #[cfg_attr(target_arch = "x86", link_name = concat!("_imp_", stringify!($lib), "$", stringify!($func)))]
@@ -38,13 +38,13 @@ macro_rules! import_function {
                 fn [<__ $func>]$args $(-> $ret)?;
             }
             #[allow(non_upper_case_globals)]
-            const $func: $crate::BOFFunctionWrapper<unsafe extern $cc fn$args $(-> $ret)?> = $crate::BOFFunctionWrapper::new([<__ $func>]);
+            $pub const $func: $crate::BOFFunctionWrapper<unsafe extern $cc fn$args $(-> $ret)?> = $crate::BOFFunctionWrapper::new([<__ $func>]);
         }
     };
 }
 
-macro_rules! import_function_internal {
-    ($func:ident$args:tt $(-> $ret:ty)?) => {
+macro_rules! import_internal_function {
+    ($pub:vis $func:ident$args:tt $(-> $ret:ty)?) => {
         $crate::paste! {
             extern "cdecl" {
                 #[cfg_attr(target_arch = "x86", link_name = concat!("_imp_", stringify!($func)))]
@@ -52,27 +52,13 @@ macro_rules! import_function_internal {
                 fn [<__ $func>]$args $(-> $ret)?;
             }
             #[allow(non_upper_case_globals)]
-            const $func: $crate::BOFFunctionWrapper<unsafe extern "cdecl" fn$args $(-> $ret)?> = $crate::BOFFunctionWrapper::new([<__ $func>]);
-        }
-    }
-}
-
-macro_rules! import_function_internal_pub {
-    ($(pub)?$func:ident$args:tt $(-> $ret:ty)?) => {
-        $crate::paste! {
-            extern "cdecl" {
-                #[cfg_attr(target_arch = "x86", link_name = concat!("_imp_", stringify!($func)))]
-                #[cfg_attr(target_arch = "x86_64", link_name = concat!("__imp_", stringify!($func)))]
-                fn [<__ $func>]$args $(-> $ret)?;
-            }
-            #[allow(non_upper_case_globals)]
-            pub const $func: $crate::BOFFunctionWrapper<unsafe extern "cdecl" fn$args $(-> $ret)?> = $crate::BOFFunctionWrapper::new([<__ $func>]);
+            $pub const $func: $crate::BOFFunctionWrapper<unsafe extern "cdecl" fn$args $(-> $ret)?> = $crate::BOFFunctionWrapper::new([<__ $func>]);
         }
     }
 }
 
 #[cfg(target_arch = "x86")]
-import_function!("cdecl" NTDLL!_chkstk());
+import_function!(NTDLL!_chkstk(), "cdecl");
 #[cfg(target_arch = "x86")]
 #[no_mangle]
 unsafe extern "C" fn __chkstk() {
@@ -163,16 +149,16 @@ pub unsafe fn bootstrap_data(relocs: &[DataRelocation], section: usize) -> Optio
     Some(())
 }
 
-import_function_internal!(BeaconDataParse(
+import_internal_function!(BeaconDataParse(
     parser: *mut _BOFData,
     buffer: *mut u8,
     size: i32
 ));
-import_function_internal!(BeaconDataPtr(parser: *mut _BOFData, size: i32) -> *mut u8);
-import_function_internal!(BeaconDataInt(parser: *mut _BOFData) -> i32);
-import_function_internal!(BeaconDataShort(parser: *mut _BOFData) -> i16);
-import_function_internal!(BeaconDataLength(parser: *const _BOFData) -> i32);
-import_function_internal!(BeaconDataExtract(parser: *mut _BOFData, size: *mut i32) -> *mut u8);
+import_internal_function!(BeaconDataPtr(parser: *mut _BOFData, size: i32) -> *mut u8);
+import_internal_function!(BeaconDataInt(parser: *mut _BOFData) -> i32);
+import_internal_function!(BeaconDataShort(parser: *mut _BOFData) -> i16);
+import_internal_function!(BeaconDataLength(parser: *const _BOFData) -> i32);
+import_internal_function!(BeaconDataExtract(parser: *mut _BOFData, size: *mut i32) -> *mut u8);
 
 pub struct BofData(_BOFData);
 impl BofData {
@@ -227,8 +213,8 @@ pub const CALLBACK_OUTPUT: i32 = 0;
 pub const CALLBACK_OUTPUT_OEM: i32 = 0x1e;
 pub const CALLBACK_OUTPUT_UTF8: i32 = 0x20;
 pub const CALLBACK_ERROR: i32 = 0xd;
-import_function_internal_pub!(BeaconOutput(typ: i32, data: *const u8, len: i32));
-import_function_internal_pub!(BeaconPrintf(typ: i32, fmt: *const u8, ...));
+import_internal_function!(pub BeaconOutput(typ: i32, data: *const u8, len: i32));
+import_internal_function!(pub BeaconPrintf(typ: i32, fmt: *const u8, ...));
 
 #[macro_export]
 macro_rules! beacon_print {
@@ -256,11 +242,11 @@ macro_rules! beacon_print_error {
 
 // the BeaconFormat* apis were not included here because we
 // can just use rust's formatters
-import_function_internal_pub!(BeaconUseToken(token: HANDLE) -> BOOL);
-import_function_internal_pub!(BeaconRevertToken());
-import_function_internal_pub!(BeaconIsAdmin());
-import_function_internal_pub!(BeaconGetSpawnTo(x86: BOOL, buffer: *mut u8, length: i32));
-import_function_internal_pub!(BeaconInjectProcess(
+import_internal_function!(pub BeaconUseToken(token: HANDLE) -> BOOL);
+import_internal_function!(pub BeaconRevertToken());
+import_internal_function!(pub BeaconIsAdmin());
+import_internal_function!(pub BeaconGetSpawnTo(x86: BOOL, buffer: *mut u8, length: i32));
+import_internal_function!(pub BeaconInjectProcess(
     hProc: HANDLE,
     pid: i32,
     payload: *mut u8,
@@ -269,7 +255,7 @@ import_function_internal_pub!(BeaconInjectProcess(
     arg: *mut u8,
     a_len: i32
 ));
-import_function_internal_pub!(BeaconInjectTemporaryProcess(
+import_internal_function!(pub BeaconInjectTemporaryProcess(
     pInfo: *mut PROCESS_INFORMATION,
     payload: *mut u8,
     p_len: i32,
@@ -277,6 +263,6 @@ import_function_internal_pub!(BeaconInjectTemporaryProcess(
     arg: *mut u8,
     a_len: i32
 ));
-import_function_internal_pub!(BeaconSpawnTemporaryProcess(x86: BOOL, ignoreToken: BOOL, si: *mut STARTUPINFOA, pInfo: *mut PROCESS_INFORMATION) -> BOOL);
-import_function_internal_pub!(BeaconCleanupProcess(pInfo: *mut PROCESS_INFORMATION));
-import_function_internal_pub!(toWideChar(src: *mut u8, dst: *mut u16, max: i32) -> BOOL);
+import_internal_function!(pub BeaconSpawnTemporaryProcess(x86: BOOL, ignoreToken: BOOL, si: *mut STARTUPINFOA, pInfo: *mut PROCESS_INFORMATION) -> BOOL);
+import_internal_function!(pub BeaconCleanupProcess(pInfo: *mut PROCESS_INFORMATION));
+import_internal_function!(pub toWideChar(src: *mut u8, dst: *mut u16, max: i32) -> BOOL);
