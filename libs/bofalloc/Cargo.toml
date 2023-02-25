@@ -7,7 +7,7 @@ edition = "2021"
 bofhelper = { path = "../bofhelper" }
 
 [dependencies.windows-sys]
-version = "0.33"
+version = "0.45.0"
 features = [
     "Win32_Foundation",
     "Win32_System_Memory"
