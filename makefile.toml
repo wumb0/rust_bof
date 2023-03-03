@@ -1,3 +1,4 @@
+# cargo install cargo-make && cargo make
 [config]
 skip_core_tasks = true
 default_to_workspace = false
@@ -20,8 +21,6 @@ dependencies = ["combine-objs"]
 script = "${MINGW_PREFIX}ld -i --verbose | sed -n '/^======/, /^======/p' | grep -v '=======' | sed 's/\\(*(.rdata)\\)/__rdata_start__ = .;\\n\\1/' | sed 's/\\(*(.text)\\)/__text_start__ = .;\\n\\1/' | sed 's/\\(*(.data)\\)/__data_start__ = .;\\n\\1/' > linker_script.ld"
 
 [tasks.build]
-toolchain = "nightly"
-install_crate = { rustup_component_name = "rust-src" }
 command = "cargo"
 args = ["build", "-p", "${BOF_NAME}", "--target", "${RUST_TARGET}", "--release"]
 

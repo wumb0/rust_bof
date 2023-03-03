@@ -9,5 +9,5 @@ edition = "2021"
 paste = "1.0"
 
 [dependencies.windows-sys]
-version = "0.45.0"
+version = "0.33"
 features = ["Win32_Foundation", "Win32_System_Threading"]
