@@ -17,7 +17,7 @@ args = ["--strip-unneeded", "${BOF_NAME}.${BOF_ARCH}.o"]
 dependencies = ["combine-objs"]
 
 [tasks.generate-linker-script]
-script = "${MINGW_PREFIX}ld -i --verbose | sed -n '/^======/, /^======/p' | grep -v '=======' | sed 's/\\(*(.rdata)\\)/__rdata_start__ = .;\\n\\1/' | sed 's/\\(*(.text)\\)/__text_start__ = .;\\n\\1/' | sed 's/\\(*(.data)\\)/__data_start__ = .;\\n\\1/' > linker_script.ld"
+script = "${MINGW_PREFIX}ld -i --verbose | sed -n '/^======/, /^======/p' | grep -v '=======' | sed 's/\\(*(.rdata)\\)/__rdata_start__ = .;\\n\\1\\n*(.rdata$.refptr.*)/' | sed 's/\\(*(.text)\\)/__text_start__ = .;\\n\\1/' | sed 's/\\(*(.data)\\)/__data_start__ = .;\\n\\1/' > linker_script.ld"
 
 [tasks.build]
 toolchain = "nightly"

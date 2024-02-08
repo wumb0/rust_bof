@@ -1,6 +1,6 @@
 Rust BOFs for Cobalt Strike
 ===========================
-This took me like 4 days, but I got it working... rust core + alloc for Cobalt Strike BOFs.  
+This took me like 4 days (+2 days for an update), but I got it working... rust core + alloc for Cobalt Strike BOFs.  
 This is very much a PoC, but I'd love to see others playing around with it and contributing.  
 
 Building
@@ -68,10 +68,30 @@ I feel like I want to write a blog post about it at some point, but for now, her
 yeah and now both 32 and 64 bit BOFs work.  
 I haven't tried anything too incredibly fancy yet, but let me know if there are issues.  
 
+How the fk, part 2
+==================
+Well it's 2024 now and this is broken on newest CS and rust.  
+The rust developers added a extern global static u8 variable called `__rust_no_alloc_shim_is_unstable` in [this commit](https://github.com/rust-lang/rust/blob/66982a383b6f7d3a933fc6896202632bee7161a4/library/alloc/src/alloc.rs#L42)  
+Some of my friends and I were trying to figure out how to deal with it.  
+
+Ok, so my solution is not pretty. Basically, the compiler is putting a reference to that global static in it's own `.rdata` subsection called `.rdata$.refptr.__rust_no_alloc_shim_is_unstable`. Something to do with COMDAT or some shit. That section cannot be found by the BOF linker. So why not just combine all `.rdata$.refptr.*` sections into `.rdata`. That works fine, except now that variable cannot be accessed. 
+
+You might say to yourself... huh `__rust_alloc` should call my allocator and that should be that. Well now [something](https://github.com/rust-lang/rust/blob/66982a383b6f7d3a933fc6896202632bee7161a4/library/alloc/src/alloc.rs#L102) actually calls `__rust_alloc` for you and right before it does it does a read of `__rust_no_alloc_shim_is_unstable`. This causes the BOF to crash, because it's actually trying to find that symbol via `.refptr.__rust_no_alloc_shim_is_unstable`, which is empty, as the linker is supposed to fill it out or something. The symbol must be defined somewhere too, and as far as I can tell it is not defined in alloc or in our object file.  
+
+So my solution is just to declare `__rust_no_alloc_shim_is_unstable` and write the address of it to `.refptr.__rust_no_alloc_shim_is_unstable`. To write to the address of the `refptr` symbol I just import it via link name (as a function so I don't generate more `refptr` symbols *sigh*). And then I write to that location when the allocator is initialized. And it actually works...  
+
+Sometime in between rust 1.61 and rust 1.75 the rust devs also made it so the `#[global_allocator]` attribute actually generates the `__rust_{alloc|alloc_zeroed|dealloc|realloc}` symbols, so we don't need to provide those anymore, BUT we do need to initialize the allocator somewhere now. I put that code in `bofentry::entrypoint`.  
+
+At least as of CS 4.9 the builtin COFF parser (`pe.ObjExecutable`) does relocations inside of `.data`, but still not `.rdata`. I suppose we could just merge `.rdata` into data and not have to do any relocations at all. A task for another time perhaps. I noticed this because all of my addresses in `.data` were about doubled... so I was applying the relocations when they were already applied.  
+
+It also seems like rustc now generates `IMAGE_REL_AMD64_REL32` relocation types which are a bit annoying to understand. I referenced [a](https://github.com/trustedsec/COFFLoader/blob/7525640b9b63408cb35d7a87c759732d8add1e7c/COFFLoader.c#L345) [few](https://opensource.apple.com/source/clang/clang-800.0.38/src/lib/ExecutionEngine/RuntimeDyld/Targets/RuntimeDyldCOFFX86_64.h.auto.html) [sources](https://github.com/nettitude/RunOF/blob/8a57bbf01e598560ef0a2bf260b57f105053f554/RunOF/RunOF/Internals/Coff.cs#L673) and came up with some code that seems to work.  
+
+So it works again. I also found a neat trick to stop LLVM from prepending underscores to every symbol. Just put `\x01` right before the name. [Thanks alexchrichton.](https://github.com/rust-lang/rust/issues/35052#issuecomment-235420755)
+
 Versions
 ========
 I don't know if this will work with future versions of CS or rust. Maybe.  
-I've been using rust 1.61.0 nightly and CS 4.5.  
+I've been using rust 1.75.0 nightly (2024-02-07) and CS 4.9.  
 
 Known issues
 ============
@@ -82,6 +102,7 @@ TODO
 - Make the bofhelper library more robust  
 - Docs, always \<3  
 - Add some `Result` action with proper error types  
+- Make bofentry a proc macro attribute  
 
 Thanks
 ======
@@ -90,3 +111,4 @@ Thanks
 - This post on Rust intermediates - https://medium.com/@squanderingtime/manually-linking-rust-binaries-to-support-out-of-tree-llvm-passes-8776b1d037a4  
 - This post on debugging java bytecode - https://www.crowdstrike.com/blog/native-java-bytecode-debugging-without-source-code/  
 - Sleep & CS beacon docs  
+- The rust compiler devs for adding a undefined global static u8 ref and ruining two days of my life  

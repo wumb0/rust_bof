@@ -2,7 +2,7 @@ import pe.OBJExecutable;
 import common.Packer;
 
 alias rustbof {
-    local('$arch $handle $data $args $relocs $ndata $nrdata');
+    local('$arch $handle $data $args $relocs');
     $arch = binfo($1, "arch");
     $handle = openf(script_resource("rustbof." . $arch. ".o"));
     $data = readb($handle, -1);
@@ -11,9 +11,8 @@ alias rustbof {
         berror($1, "Relocation packing failed");
         return;
     }
-    ($relocs, $ndata, $nrdata) = $relocs;
-    # the first two args MUST be the relocation bytes and the number of data entries
-    $args = bof_pack($1, "bizi", $relocs, $ndata, "a string argument", 123);
+    # the first args MUST be the relocation bytes
+    $args = bof_pack($1, "bzi", $relocs, "a string argument", 123);
     blog($1, "Tasking with rust bof");
     beacon_inline_execute($1, $data, "entrypoint", $args);
 }
@@ -22,7 +21,7 @@ alias rustbof {
 # $2 - coffbytes
 # $3 - entry
 sub build_data_relocs {
-    local('$beacon $coff $parser $table $entry $packer $ndata $nrdata');
+    local('$beacon $coff $parser $table $entry $packer');
     ($beacon, $coff, $entry) = @_;
     $parser = [new OBJExecutable: $coff, $entry];
     [$parser parse];
@@ -33,18 +32,15 @@ sub build_data_relocs {
 
     $packer = [new Packer];
     [$packer little];
-    $ndata = build_relocs_for_section($beacon, ".data", $parser, $packer);
-    if ($ndata is $null) {
-        berror($beacon, "Failed to create relocs for .data");
-        return $null;
-    }
+    # .data relocations are done by CS as of 4.9... don't know when they added that
+    # let's just do .rdata
     $nrdata = build_relocs_for_section($beacon, ".rdata", $parser, $packer);
     if ($nrdata is $null) {
         berror($beacon, "Failed to create relocs for .rdata");
         return $null;
     }
 
-    return @([$packer getBytes], $ndata, $nrdata);
+    return [$packer getBytes];
 }
 
 # $1 - beacon

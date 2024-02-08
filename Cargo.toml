@@ -5,6 +5,7 @@ members = [
     "libs/bofentry",
     "libs/bofhelper"
 ]
+resolver = "2"
 
 [profile.dev]
 panic = "abort"

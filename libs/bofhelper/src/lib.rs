@@ -33,8 +33,9 @@ macro_rules! import_function {
     ($pub:vis $lib:ident!$func:ident$args:tt $(-> $ret:ty)?, $cc:literal) => {
         $crate::paste! {
             extern $cc {
-                #[cfg_attr(target_arch = "x86", link_name = concat!("_imp_", stringify!($lib), "$", stringify!($func)))]
-                #[cfg_attr(target_arch = "x86_64", link_name = concat!("__imp_", stringify!($lib), "$", stringify!($func)))]
+                // hack: \x01 tells llvm not to add the _ on 32 bit
+                // thanks alexchrichton: https://github.com/rust-lang/rust/issues/35052#issuecomment-235420755
+                #[link_name = concat!("\x01__imp_", stringify!($lib), "$", stringify!($func))]
                 fn [<__ $func>]$args $(-> $ret)?;
             }
             #[allow(non_upper_case_globals)]
@@ -47,8 +48,9 @@ macro_rules! import_internal_function {
     ($pub:vis $func:ident$args:tt $(-> $ret:ty)?) => {
         $crate::paste! {
             extern "cdecl" {
-                #[cfg_attr(target_arch = "x86", link_name = concat!("_imp_", stringify!($func)))]
-                #[cfg_attr(target_arch = "x86_64", link_name = concat!("__imp_", stringify!($func)))]
+                // hack: \x01 tells llvm not to add the _ on 32 bit
+                // thanks alexchrichton: https://github.com/rust-lang/rust/issues/35052#issuecomment-235420755
+                #[link_name = concat!("\x01__imp_", stringify!($func))]
                 fn [<__ $func>]$args $(-> $ret)?;
             }
             #[allow(non_upper_case_globals)]
@@ -82,33 +84,31 @@ pub struct DataRelocation {
 }
 
 const IMAGE_REL_AMD64_ADDR64: u8 = 1;
-// const IMAGE_REL_AMD64_ADDR32NB: u8 = 3;
-// const IMAGE_REL_AMD64_REL32: u8 = 4;
 const IMAGE_REL_I386_DIR32: u8 = 6;
+const IMAGE_REL_AMD64_REL32: u8 = 4;
 const REL_SEC_TEXT: u8 = 1;
 const REL_SEC_DATA: u8 = 2;
 const REL_SEC_RDATA: u8 = 3;
 // hack: declare as function to prevent rust from including
 // undefined refptr symbol
 extern "C" {
-    #[cfg_attr(target_arch = "x86", link_name = "_data_start__")]
+    #[link_name = "\x01__data_start__"]
     fn __data_start__();
-    #[cfg_attr(target_arch = "x86", link_name = "_text_start__")]
+    #[link_name = "\x01__text_start__"]
     fn __text_start__();
-    #[cfg_attr(target_arch = "x86", link_name = "_rdata_start__")]
+    #[link_name = "\x01__rdata_start__"]
     fn __rdata_start__();
 }
 
 /// Perform relocations on the .data and .rdata sections  
 /// # Safety  
 /// I think you can guess why this is not safe at all  
-pub unsafe fn bootstrap(relocs: &[u8], ndata: usize) -> Option<()> {
+pub unsafe fn bootstrap(relocs: &[u8]) -> Option<()> {
     let relocs = core::slice::from_raw_parts(
         relocs.as_ptr() as *const DataRelocation,
         relocs.len() / core::mem::size_of::<DataRelocation>(),
     );
-    bootstrap_data(&relocs[..ndata], __data_start__ as usize)
-        .and(bootstrap_data(&relocs[ndata..], __rdata_start__ as usize))
+    bootstrap_data(relocs, __rdata_start__ as usize)
 }
 
 /// Perform relocations on a single section
@@ -122,6 +122,7 @@ pub unsafe fn bootstrap_data(relocs: &[DataRelocation], section: usize) -> Optio
             REL_SEC_RDATA => __rdata_start__ as usize,
             _ => return None,
         };
+
         match reloc.typ {
             IMAGE_REL_AMD64_ADDR64 => {
                 let ptr: *mut u64 = (section + reloc.offset_in_sec as usize) as *mut u64;
@@ -132,16 +133,12 @@ pub unsafe fn bootstrap_data(relocs: &[DataRelocation], section: usize) -> Optio
                     (section as *mut u8).add(reloc.offset_in_sec as usize) as *mut u32;
                 *ptr += (secbase + reloc.offset_to_sym as usize) as u32;
             }
-            // rust doesn't seem to use the rest of these, so we will just comment them out for now
-            // **I'm not sure if they're right**
-            // IMAGE_REL_AMD64_ADDR32NB => {
-            //     let ptr: *mut u32 = (section as *mut u8).add(reloc.offset_in_sec as usize) as *mut u32;
-            //     *ptr += ((secbase + reloc.offset_to_sym as usize) - ptr.add(1) as usize) as u32;
-            // }
-            // IMAGE_REL_AMD64_REL32 => {
-            //     let ptr: *mut u32 = (section as *mut u8).add(reloc.offset_in_sec as usize) as *mut u32;
-            //     *ptr += (reloc.offset_to_sym as usize + (secbase - ptr.add(1) as usize)) as u32;
-            // }
+            IMAGE_REL_AMD64_REL32 => {
+                // relative to the byte following the relocation
+                // so find the distance between the symbol and the current_loc + 4
+                let ptr: *mut u32 = (section as *mut u8).add(reloc.offset_in_sec as usize) as *mut u32;
+                *ptr = (secbase - (ptr.add(1) as usize) + reloc.offset_to_sym as usize) as u32;
+            }
             _ => return None,
         }
     }

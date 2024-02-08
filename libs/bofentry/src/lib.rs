@@ -11,13 +11,16 @@ macro_rules! bof_entry {
         #[no_mangle]
         unsafe extern "C" fn entrypoint(args: *mut u8, alen: i32) {
             let mut data = $crate::BofData::parse(args, alen);
-            if $crate::bootstrap(data.get_data(), data.get_int() as usize).is_none() {
+            if $crate::bootstrap(data.get_data()).is_none() {
                 $crate::BeaconPrintf(
                     $crate::CALLBACK_ERROR,
                     "BOF relocation bootstrap failed\0".as_ptr(),
                 );
                 return;
             }
+
+            #[cfg(feature = "alloc")]
+            $crate::ALLOCATOR.initialize();
 
             $entry(data);
 
