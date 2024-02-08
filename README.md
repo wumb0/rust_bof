@@ -102,7 +102,7 @@ TODO
 - Make the bofhelper library more robust  
 - Docs, always \<3  
 - Add some `Result` action with proper error types  
-- Allow you to specify the args in the `bof_entry` macro and then have those args passed directly to your entry function. It would be cool to completely abstract away the `BofData` structure!  
+- Allow you to specify the args in the `bof` macro and then have those args passed directly to your entry function. It would be cool to completely abstract away the `BofData` structure!  
 
 Thanks
 ======
