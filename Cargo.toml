@@ -4,7 +4,7 @@ members = [
     "libs/bofalloc",
     "libs/bofentry",
     "libs/bofhelper"
-]
+, "libs/bofentry_macro"]
 resolver = "2"
 
 [profile.dev]
