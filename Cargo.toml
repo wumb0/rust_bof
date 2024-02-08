@@ -7,6 +7,12 @@ members = [
 , "libs/bofentry_macro"]
 resolver = "2"
 
+[workspace.package]
+version = "0.1.1"
+authors = ["wumb0"]
+description = "Cobalt strike BOFs in Rust"
+edition = "2021"
+
 [profile.dev]
 panic = "abort"
 opt-level = "z"
